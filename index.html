@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="theme-color" content="#0a0c0f"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<title>Zero-Knowledge Vault</title>
+<link rel="manifest" href="manifest.json"/>
+
+<style>
+/* ── DESIGN: Industrial Brutalist / Terminal Aesthetic ── */
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;500;700&display=swap');
+
+:root {
+  --bg:         #080a0d;
+  --bg2:        #0d1017;
+  --bg3:        #131820;
+  --border:     #1e2835;
+  --border2:    #2a3848;
+  --accent:     #00ff9d;
+  --accent2:    #00c97a;
+  --accent-dim: rgba(0,255,157,0.12);
+  --danger:     #ff3c5a;
+  --danger-dim: rgba(255,60,90,0.12);
+  --warn:       #ffb800;
+  --warn-dim:   rgba(255,184,0,0.12);
+  --text:       #c8d8e8;
+  --text-dim:   #556678;
+  --text-mid:   #8899aa;
+  --mono:       'Share Tech Mono', monospace;
+  --sans:       'Rajdhani', sans-serif;
+  --rad:        4px;
+  --glow:       0 0 20px rgba(0,255,157,0.25);
+  --glow-sm:    0 0 8px rgba(0,255,157,0.3);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%; background: var(--bg); color: var(--text);
+  font-family: var(--sans); font-weight: 300;
+  overflow-x: hidden;
+}
+
+/* ── GRID BACKGROUND ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0,255,157,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,157,0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ── SCAN LINE ── */
+body::after {
+  content: '';
+  position: fixed; top: -100%; left: 0; right: 0; height: 200%;
+  z-index: 0; pointer-events: none;
+  background: linear-gradient(transparent 50%, rgba(0,0,0,0.03) 50%);
+  background-size: 100% 4px;
+  animation: scanlines 8s linear infinite;
+}
+@keyframes scanlines { to { transform: translateY(50%); } }
+
+/* ── SCREENS ── */
+.screen {
+  position: fixed; inset: 0; z-index: 10;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 24px;
+  transition: opacity 0.3s ease;
+}
+.screen.hidden { opacity: 0; pointer-events: none; }
+
+/* ── LOCK SCREEN ── */
+#screen-lock {
+  background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(0,255,157,0.04) 0%, transparent 70%), var(--bg);
+}
+
+.lock-logo {
+  font-family: var(--mono);
+  font-size: clamp(11px, 1.5vw, 13px);
+  color: var(--accent);
+  text-shadow: var(--glow-sm);
+  margin-bottom: 40px;
+  text-align: center;
+  letter-spacing: 0.05em;
+  line-height: 1.4;
+  opacity: 0.9;
+}
+
+.lock-title {
+  font-family: var(--sans);
+  font-size: clamp(28px, 5vw, 42px);
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.lock-title span { color: var(--accent); text-shadow: var(--glow-sm); }
+
+.lock-subtitle {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 48px;
+}
+
+.lock-card {
+  width: 100%; max-width: 420px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--rad);
+  padding: 32px;
+  position: relative;
+}
+.lock-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.6;
+}
+
+/* ── FORM ELEMENTS ── */
+.field-label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.field-wrap {
+  position: relative; margin-bottom: 20px;
+}
+
+input[type="password"], input[type="text"], input[type="url"] {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--rad);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 14px;
+  padding: 12px 44px 12px 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(0,255,157,0.1);
+}
+input::placeholder { color: var(--text-dim); }
+
+.toggle-vis {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; color: var(--text-dim);
+  font-size: 16px; padding: 4px; transition: color 0.2s;
+}
+.toggle-vis:hover { color: var(--accent); }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: var(--sans); font-weight: 700;
+  font-size: 13px; letter-spacing: 0.15em; text-transform: uppercase;
+  padding: 13px 24px; border-radius: var(--rad); border: none; cursor: pointer;
+  transition: all 0.2s; position: relative; overflow: hidden;
+}
+.btn-primary {
+  background: var(--accent); color: #000;
+  box-shadow: 0 0 20px rgba(0,255,157,0.2);
+}
+.btn-primary:hover:not(:disabled) {
+  background: #33ffb3;
+  box-shadow: var(--glow);
+  transform: translateY(-1px);
+}
+.btn-primary:disabled {
+  background: var(--bg3); color: var(--text-dim);
+  cursor: not-allowed; box-shadow: none;
+}
+.btn-ghost {
+  background: transparent; color: var(--text-mid);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn-danger {
+  background: var(--danger-dim); color: var(--danger);
+  border: 1px solid rgba(255,60,90,0.3);
+}
+.btn-danger:hover { background: rgba(255,60,90,0.2); }
+.btn-full { width: 100%; }
+
+/* ── STATUS MESSAGES ── */
+.status-msg {
+  margin-top: 16px;
+  padding: 10px 14px;
+  border-radius: var(--rad);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: 0.05em;
+  display: none;
+}
+.status-msg.visible { display: block; }
+.status-error   { background: var(--danger-dim); border: 1px solid rgba(255,60,90,0.3); color: var(--danger); }
+.status-warn    { background: var(--warn-dim);   border: 1px solid rgba(255,184,0,0.3);  color: var(--warn); }
+.status-ok      { background: var(--accent-dim); border: 1px solid rgba(0,255,157,0.3);  color: var(--accent); }
+
+/* ── COUNTDOWN DISPLAY ── */
+#lockout-display {
+  display: none;
+  text-align: center;
+  margin-top: 20px;
+}
+#lockout-display.visible { display: block; }
+
+.countdown-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.countdown-value {
+  font-family: var(--mono);
+  font-size: 36px;
+  color: var(--warn);
+  text-shadow: 0 0 16px rgba(255,184,0,0.4);
+  letter-spacing: 0.05em;
+}
+.progress-bar-wrap {
+  margin-top: 12px;
+  height: 2px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  background: var(--warn);
+  width: 100%;
+  animation: shrink var(--duration, 30s) linear forwards;
+}
+@keyframes shrink { to { width: 0%; } }
+
+/* ── ATTEMPT COUNTER ── */
+.attempt-counter {
+  display: flex; gap: 4px; justify-content: center;
+  margin-top: 20px; flex-wrap: wrap;
+}
+.dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--border);
+  transition: background 0.3s;
+}
+.dot.used    { background: var(--danger); box-shadow: 0 0 4px var(--danger); }
+.dot.current { background: var(--warn);   box-shadow: 0 0 6px var(--warn); animation: pulse 1s ease infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* ── TABS ── */
+.tab-row {
+  display: flex; border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+}
+.tab-btn {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em;
+  text-transform: uppercase; color: var(--text-dim);
+  background: none; border: none; padding: 10px 20px; cursor: pointer;
+  border-bottom: 2px solid transparent; transition: all 0.2s; margin-bottom: -1px;
+}
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-btn:hover { color: var(--text); }
+
+/* ── VAULT SCREEN ── */
+#screen-vault {
+  background: var(--bg);
+  align-items: stretch; justify-content: flex-start;
+  padding: 0;
+}
+
+.vault-header {
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  padding: 12px 20px; display: flex; align-items: center; gap: 12px;
+  position: relative; z-index: 1; flex-shrink: 0;
+}
+.vault-header::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-dim), transparent);
+}
+.vh-logo { font-family: var(--mono); font-size: 12px; color: var(--accent); flex: 1; }
+.vh-logo span { color: var(--text-dim); }
+
+.vault-actions { display: flex; gap: 8px; }
+.btn-sm { padding: 7px 14px; font-size: 11px; }
+
+.vault-body {
+  flex: 1; overflow: hidden;
+  display: flex; flex-direction: column;
+  max-width: 900px; width: 100%; margin: 0 auto;
+  padding: 0 20px 20px;
+}
+
+.search-bar {
+  margin: 16px 0 0;
+  position: relative;
+}
+.search-bar input {
+  padding-left: 36px;
+  font-size: 13px;
+}
+.search-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--text-dim); font-size: 14px; pointer-events: none;
+}
+
+.entries-list {
+  margin-top: 12px; flex: 1; overflow-y: auto;
+  border: 1px solid var(--border); border-radius: var(--rad);
+  background: var(--bg2);
+}
+.entries-list::-webkit-scrollbar { width: 4px; }
+.entries-list::-webkit-scrollbar-track { background: transparent; }
+.entries-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+.entry-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background 0.15s;
+}
+.entry-row:last-child { border-bottom: none; }
+.entry-row:hover { background: var(--bg3); }
+.entry-row:hover .entry-actions { opacity: 1; }
+
+.entry-icon {
+  width: 32px; height: 32px; border-radius: 4px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; flex-shrink: 0;
+}
+.entry-info { flex: 1; min-width: 0; }
+.entry-site {
+  font-family: var(--sans); font-weight: 500; font-size: 14px;
+  color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.entry-user {
+  font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 2px;
+}
+.entry-actions {
+  display: flex; gap: 6px; opacity: 0; transition: opacity 0.2s;
+}
+.icon-btn {
+  background: none; border: 1px solid var(--border); border-radius: var(--rad);
+  color: var(--text-mid); font-size: 12px; padding: 5px 8px;
+  cursor: pointer; transition: all 0.2s; font-family: var(--mono);
+}
+.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.icon-btn.del:hover { border-color: var(--danger); color: var(--danger); }
+
+.empty-state {
+  padding: 60px 20px; text-align: center;
+}
+.empty-state .em { font-family: var(--mono); font-size: 32px; margin-bottom: 12px; opacity: 0.3; }
+.empty-state p  { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 0.1em; }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.hidden { display: none; }
+.modal {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: var(--rad); width: 100%; max-width: 480px;
+  position: relative;
+}
+.modal::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+.modal-header {
+  padding: 20px 24px 0;
+  font-family: var(--mono); font-size: 11px; color: var(--accent);
+  letter-spacing: 0.2em; text-transform: uppercase;
+}
+.modal-body { padding: 20px 24px; }
+.modal-footer {
+  padding: 0 24px 20px;
+  display: flex; gap: 10px; justify-content: flex-end;
+}
+
+/* ── SELF-DESTRUCT SCREEN ── */
+#screen-destruct {
+  background: #0a0000;
+}
+#screen-destruct::before {
+  background-image:
+    linear-gradient(rgba(255,60,90,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,60,90,0.04) 1px, transparent 1px);
+}
+.destruct-icon { font-size: 64px; margin-bottom: 24px; }
+.destruct-title {
+  font-family: var(--mono); font-size: 20px; color: var(--danger);
+  text-shadow: 0 0 20px rgba(255,60,90,0.5);
+  letter-spacing: 0.2em; text-align: center; margin-bottom: 12px;
+}
+.destruct-msg {
+  font-family: var(--mono); font-size: 12px; color: #ff6680;
+  text-align: center; max-width: 380px; line-height: 1.8;
+}
+
+/* ── LOADING ── */
+#screen-loading {
+  background: var(--bg);
+}
+.loading-spinner {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 20px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 0.15em; }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+  z-index: 999; background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: var(--rad); padding: 12px 20px;
+  font-family: var(--mono); font-size: 11px; color: var(--text);
+  transition: transform 0.3s ease;
+  pointer-events: none; white-space: nowrap;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── NEW VAULT ── */
+.onboard-steps {
+  display: flex; gap: 8px; margin-bottom: 24px;
+}
+.step-indicator {
+  flex: 1; height: 2px; background: var(--border); border-radius: 2px;
+  transition: background 0.3s;
+}
+.step-indicator.done { background: var(--accent); }
+
+.strength-bar-wrap {
+  height: 4px; background: var(--border); border-radius: 4px; margin-top: 8px; overflow: hidden;
+}
+.strength-bar {
+  height: 100%; width: 0%; border-radius: 4px; transition: width 0.3s, background 0.3s;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 480px) {
+  .lock-card { padding: 20px; }
+  .vault-header { padding: 10px 12px; }
+  .vh-logo { font-size: 10px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     SCREEN: LOADING
+══════════════════════════════════════════ -->
+<div id="screen-loading" class="screen">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loading-text">INITIALISING SECURE RUNTIME...</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SCREEN: LOCK (Login)
+══════════════════════════════════════════ -->
+<div id="screen-lock" class="screen hidden">
+  <pre class="lock-logo">┌──────────────────────────────┐
+│  ZERO-KNOWLEDGE ARCHITECTURE │
+│  AES-256-GCM · ARGON2ID    │
+└──────────────────────────────┘</pre>
+
+  <div class="lock-title">VAULT<span>_</span></div>
+  <div class="lock-subtitle">Encrypted · Offline · Private</div>
+
+  <!-- TAB: Unlock existing / New vault -->
+  <div style="width:100%;max-width:420px">
+    <div class="tab-row" style="border:1px solid var(--border);border-bottom:none;border-radius:4px 4px 0 0;overflow:hidden;background:var(--bg2)">
+      <button class="tab-btn active" id="tab-unlock" onclick="switchTab('unlock')">Unlock Vault</button>
+      <button class="tab-btn" id="tab-new" onclick="switchTab('new')">New Vault</button>
+    </div>
+
+    <!-- UNLOCK PANEL -->
+    <div id="panel-unlock" class="lock-card" style="border-radius:0 0 4px 4px">
+      <label class="field-label" for="inp-pass">Master Password</label>
+      <div class="field-wrap">
+        <input type="password" id="inp-pass" placeholder="Enter master password…" autocomplete="current-password"/>
+        <button class="toggle-vis" onclick="toggleVis('inp-pass',this)">👁</button>
+      </div>
+
+      <label class="field-label" for="inp-vault-file">Vault File (.vault)</label>
+      <div class="field-wrap" style="margin-bottom:0">
+        <input type="text" id="inp-vault-file-name" placeholder="No file selected" readonly
+               onclick="document.getElementById('inp-vault-file').click()" style="cursor:pointer"/>
+        <input type="file" id="inp-vault-file" accept=".vault,.json" style="display:none" onchange="onVaultFileSelected(this)"/>
+      </div>
+
+      <div style="margin-top:16px">
+        <button class="btn btn-primary btn-full" id="btn-unlock" onclick="doUnlock()">
+          <span id="btn-unlock-txt">UNLOCK</span>
+        </button>
+      </div>
+
+      <div id="status-unlock" class="status-msg"></div>
+
+      <!-- Lockout countdown -->
+      <div id="lockout-display">
+        <div class="countdown-label">Access locked — try again in</div>
+        <div class="countdown-value" id="countdown-value">--</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+      </div>
+
+      <!-- Attempt dots (1–15 visible, 16 = destruct) -->
+      <div class="attempt-counter" id="attempt-dots">
+        <!-- filled by JS -->
+      </div>
+    </div>
+
+    <!-- NEW VAULT PANEL -->
+    <div id="panel-new" class="lock-card" style="display:none;border-radius:0 0 4px 4px">
+      <div class="onboard-steps">
+        <div class="step-indicator done" id="step1"></div>
+        <div class="step-indicator" id="step2"></div>
+      </div>
+
+      <div id="new-step-1">
+        <label class="field-label" for="inp-new-pass">Choose Master Password</label>
+        <div class="field-wrap">
+          <input type="password" id="inp-new-pass" placeholder="Strong password…" oninput="checkStrength(this)"/>
+          <button class="toggle-vis" onclick="toggleVis('inp-new-pass',this)">👁</button>
+        </div>
+        <div class="strength-bar-wrap"><div class="strength-bar" id="strength-bar"></div></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:6px" id="strength-label">Enter a password to check strength</div>
+
+        <div class="field-wrap" style="margin-top:20px">
+          <label class="field-label" for="inp-new-pass2">Confirm Password</label>
+          <input type="password" id="inp-new-pass2" placeholder="Repeat password…"/>
+        </div>
+
+        <button class="btn btn-primary btn-full" style="margin-top:8px" onclick="doCreateVault()">CREATE VAULT</button>
+        <div id="status-new" class="status-msg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SCREEN: VAULT (Main App)
+══════════════════════════════════════════ -->
+<div id="screen-vault" class="screen hidden">
+  <div class="vault-header">
+    <div class="vh-logo">VAULT<span>_ v1.0</span></div>
+    <div class="vault-actions">
+      <button class="btn btn-ghost btn-sm" onclick="openAddModal()">+ ADD</button>
+      <button class="btn btn-ghost btn-sm" onclick="doExport()">↓ EXPORT</button>
+      <button class="btn btn-ghost btn-sm" onclick="doLock()">⏻ LOCK</button>
+    </div>
+  </div>
+
+  <div class="vault-body">
+    <div class="search-bar">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="inp-search" placeholder="Search sites, usernames…" oninput="filterEntries(this.value)"/>
+    </div>
+
+    <div class="entries-list" id="entries-list">
+      <div class="empty-state" id="empty-state">
+        <div class="em">🔐</div>
+        <p>NO ENTRIES YET<br>CLICK + ADD TO STORE YOUR FIRST PASSWORD</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SCREEN: SELF-DESTRUCT
+══════════════════════════════════════════ -->
+<div id="screen-destruct" class="screen hidden">
+  <div class="destruct-icon">💥</div>
+  <div class="destruct-title">VAULT DESTROYED</div>
+  <div class="destruct-msg">
+    16 failed authentication attempts detected.<br>
+    The in-app vault has been permanently wiped.<br><br>
+    <span style="color:var(--text-dim)">Any exported .vault files remain safe<br>
+    and can be re-imported with the correct<br>
+    master password.</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODAL: Add / Edit Entry
+══════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="modal-entry">
+  <div class="modal">
+    <div class="modal-header" id="modal-title">ADD ENTRY</div>
+    <div class="modal-body">
+      <input type="hidden" id="entry-edit-id"/>
+
+      <label class="field-label">Site / Service</label>
+      <div class="field-wrap">
+        <input type="text" id="entry-site" placeholder="e.g. github.com"/>
+      </div>
+
+      <label class="field-label">Username / Email</label>
+      <div class="field-wrap">
+        <input type="text" id="entry-user" placeholder="you@example.com"/>
+      </div>
+
+      <label class="field-label">Password</label>
+      <div class="field-wrap">
+        <input type="password" id="entry-pass" placeholder="Password…"/>
+        <button class="toggle-vis" onclick="toggleVis('entry-pass',this)">👁</button>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="margin-bottom:16px;margin-top:-8px" onclick="genAndFill()">⚡ GENERATE SECURE</button>
+
+      <label class="field-label">Notes</label>
+      <div class="field-wrap">
+        <input type="text" id="entry-notes" placeholder="Optional notes…"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">CANCEL</button>
+      <button class="btn btn-primary" onclick="saveEntry()">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ══════════════════════════════════════════
+     JAVASCRIPT UI LAYER
+══════════════════════════════════════════ -->
+<script>
+// ── Global UI object (used by vault-bridge.js) ──
+window.UI = {
+  showLockScreen(lockingOut) {
+    document.getElementById('lockout-display').classList.toggle('visible', lockingOut);
+  },
+  setCountdown(text) {
+    document.getElementById('countdown-value').textContent = text || '--';
+  },
+  setLockBtnDisabled(v) {
+    document.getElementById('btn-unlock').disabled = v;
+    document.getElementById('btn-unlock-txt').textContent = v ? 'LOCKED' : 'UNLOCK';
+  },
+  showSelfDestruct() {
+    showScreen('destruct');
+  }
+};
+
+// ── Screen helpers ──
+function showScreen(name) {
+  ['loading','lock','vault','destruct'].forEach(s => {
+    document.getElementById(`screen-${s}`).classList.toggle('hidden', s !== name);
+  });
+}
+
+function setLoading(msg) {
+  document.getElementById('loading-text').textContent = msg || 'LOADING…';
+  showScreen('loading');
+}
+
+// ── Tab switching ──
+function switchTab(name) {
+  document.getElementById('tab-unlock').classList.toggle('active', name==='unlock');
+  document.getElementById('tab-new').classList.toggle('active', name==='new');
+  document.getElementById('panel-unlock').style.display = name==='unlock' ? '' : 'none';
+  document.getElementById('panel-new').style.display    = name==='new'    ? '' : 'none';
+}
+
+// ── Visibility toggle ──
+function toggleVis(id, btn) {
+  const inp = document.getElementById(id);
+  const isPass = inp.type === 'password';
+  inp.type = isPass ? 'text' : 'password';
+  btn.textContent = isPass ? '🙈' : '👁';
+}
+
+// ── Status helper ──
+function setStatus(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = `status-msg visible status-${type}`;
+}
+function clearStatus(id) {
+  const el = document.getElementById(id);
+  el.className = 'status-msg';
+}
+
+// ── Attempt dots ──
+function renderDots(used) {
+  const wrap = document.getElementById('attempt-dots');
+  const total = 15;
+  wrap.innerHTML = '';
+  for (let i = 1; i <= total; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i < used ? ' used' : i === used ? ' current' : '');
+    wrap.appendChild(d);
+  }
+  if (used > 0) wrap.style.display = 'flex';
+}
+
+// ── Password strength ──
+function checkStrength(inp) {
+  const p = inp.value;
+  let score = 0;
+  if (p.length >= 12)                          score++;
+  if (p.length >= 20)                          score++;
+  if (/[A-Z]/.test(p) && /[a-z]/.test(p))     score++;
+  if (/\d/.test(p))                            score++;
+  if (/[^A-Za-z0-9]/.test(p))                 score++;
+
+  const colors = ['#ff3c5a','#ff7c3a','#ffb800','#7ed321','#00ff9d'];
+  const labels = ['Very Weak','Weak','Fair','Strong','Very Strong'];
+  const bar    = document.getElementById('strength-bar');
+  const label  = document.getElementById('strength-label');
+  bar.style.width      = `${(score/5)*100}%`;
+  bar.style.background = colors[score-1] || '#333';
+  label.textContent    = p ? labels[score-1] || 'Very Weak' : 'Enter a password to check strength';
+}
+
+// ── File picker ──
+let loadedVaultJSON = null;
+function onVaultFileSelected(inp) {
+  const file = inp.files[0];
+  if (!file) return;
+  document.getElementById('inp-vault-file-name').value = file.name;
+  window.importVaultFile(file).then(json => {
+    loadedVaultJSON = json;
+    toast('Vault file loaded');
+  }).catch(e => setStatus('status-unlock', 'Could not read file.', 'error'));
+}
+
+// ── Unlock ──
+async function doUnlock() {
+  const pass = document.getElementById('inp-pass').value.trim();
+  if (!pass) { setStatus('status-unlock','Enter your master password.','error'); return; }
+  if (!loadedVaultJSON) { setStatus('status-unlock','Select a .vault file first.','error'); return; }
+
+  clearStatus('status-unlock');
+  document.getElementById('btn-unlock').disabled = true;
+  document.getElementById('btn-unlock-txt').textContent = 'DECRYPTING…';
+
+  let result;
+  try {
+    result = await window.attemptUnlock(pass, loadedVaultJSON);
+  } catch(e) {
+    setStatus('status-unlock','Internal error: ' + e.message, 'error');
+    UI.setLockBtnDisabled(false);
+    return;
+  }
+
+  if (result.success) {
+    // Parse vault metadata so we can re-encrypt on save
+    const vf = JSON.parse(loadedVaultJSON);
+    VaultState.masterPass = pass;
+    VaultState.saltB64    = vf.salt;
+    VaultState.authHash   = vf.authHash;
+    VaultState.entries    = Array.isArray(result.entries) ? result.entries : [];
+    VaultState.isUnlocked = true;
+    document.getElementById('inp-pass').value = '';
+    renderVault();
+    showScreen('vault');
+    toast('Vault unlocked ✓');
+    return;
+  }
+
+  UI.setLockBtnDisabled(false);
+
+  if (result.status === 'WRONG_PASSWORD') {
+    const left = result.attemptsLeft;
+    const next = result.waitSecs;
+    let msg = `Wrong password. ${left} attempt${left!==1?'s':''} remaining.`;
+    if (next > 0) msg += ` Next failure: ${next >= 60 ? Math.round(next/60)+'m' : next+'s'} lockout.`;
+    setStatus('status-unlock', msg, 'error');
+    renderDots(result.attempts);
+  } else if (result.status === 'LOCKED') {
+    setStatus('status-unlock', `Locked out for ${result.waitSecs}s due to failed attempts.`, 'warn');
+  } else if (result.status === 'SELF_DESTRUCT') {
+    // handled by bridge
+  } else {
+    setStatus('status-unlock', 'Unexpected error.', 'error');
+  }
+}
+
+// Enter key on password field
+document.getElementById('inp-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doUnlock();
+});
+
+// ── Create New Vault ──
+async function doCreateVault() {
+  const p1 = document.getElementById('inp-new-pass').value;
+  const p2 = document.getElementById('inp-new-pass2').value;
+  if (!p1) { setStatus('status-new','Enter a master password.','error'); return; }
+  if (p1 !== p2) { setStatus('status-new','Passwords do not match.','error'); return; }
+  if (p1.length < 8) { setStatus('status-new','Password too short (min 8 chars).','warn'); return; }
+
+  clearStatus('status-new');
+  setLoading('GENERATING CRYPTOGRAPHIC MATERIAL…');
+
+  try {
+    await window.createNewVault(p1);
+    document.getElementById('inp-new-pass').value  = '';
+    document.getElementById('inp-new-pass2').value = '';
+    renderVault();
+    showScreen('vault');
+    toast('New vault created — add entries & export to save');
+  } catch(e) {
+    showScreen('lock');
+    setStatus('status-new', 'Error: ' + e.message, 'error');
+  }
+}
+
+// ── Lock ──
+function doLock() {
+  VaultState.clear();
+  loadedVaultJSON = null;
+  document.getElementById('inp-pass').value = '';
+  document.getElementById('inp-vault-file-name').value = '';
+  clearStatus('status-unlock');
+  document.getElementById('attempt-dots').innerHTML = '';
+  showScreen('lock');
+}
+
+// ── Export ──
+async function doExport() {
+  try {
+    await window.exportVault();
+    toast('Vault exported ✓');
+  } catch(e) {
+    toast('Export failed: ' + e.message);
+  }
+}
+
+// ── Entry rendering ──
+function renderVault() {
+  filterEntries('');
+}
+
+function filterEntries(query) {
+  const list  = document.getElementById('entries-list');
+  const empty = document.getElementById('empty-state');
+  const q     = query.toLowerCase();
+  const items = VaultState.entries.filter(e =>
+    e.site.toLowerCase().includes(q) ||
+    e.username.toLowerCase().includes(q)
+  );
+
+  // Clear existing rows (keep empty-state node)
+  [...list.querySelectorAll('.entry-row')].forEach(r => r.remove());
+
+  if (items.length === 0) {
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  items.forEach(entry => {
+    const row = document.createElement('div');
+    row.className = 'entry-row';
+    row.innerHTML = `
+      <div class="entry-icon">${siteIcon(entry.site)}</div>
+      <div class="entry-info">
+        <div class="entry-site">${esc(entry.site)}</div>
+        <div class="entry-user">${esc(entry.username)}</div>
+      </div>
+      <div class="entry-actions">
+        <button class="icon-btn" onclick="copyPass('${entry.id}')">⎘ COPY</button>
+        <button class="icon-btn" onclick="openEditModal('${entry.id}')">✎ EDIT</button>
+        <button class="icon-btn del" onclick="deleteEntry('${entry.id}')">✕</button>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function siteIcon(site) {
+  const icons = { github:'⚙', google:'G', twitter:'✕', facebook:'f', amazon:'A', apple:'', microsoft:'⊞', default:'🔑' };
+  const key = Object.keys(icons).find(k => site.toLowerCase().includes(k));
+  return icons[key] || icons.default;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Add/Edit Modal ──
+function openAddModal() {
+  document.getElementById('modal-title').textContent = 'ADD ENTRY';
+  document.getElementById('entry-edit-id').value = '';
+  ['entry-site','entry-user','entry-pass','entry-notes'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('modal-entry').classList.remove('hidden');
+}
+
+function openEditModal(id) {
+  const entry = VaultState.entries.find(e => e.id === id);
+  if (!entry) return;
+  document.getElementById('modal-title').textContent = 'EDIT ENTRY';
+  document.getElementById('entry-edit-id').value  = id;
+  document.getElementById('entry-site').value     = entry.site;
+  document.getElementById('entry-user').value     = entry.username;
+  document.getElementById('entry-pass').value     = entry.password;
+  document.getElementById('entry-notes').value    = entry.notes || '';
+  document.getElementById('modal-entry').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('modal-entry').classList.add('hidden');
+}
+
+function saveEntry() {
+  const id    = document.getElementById('entry-edit-id').value;
+  const site  = document.getElementById('entry-site').value.trim();
+  const user  = document.getElementById('entry-user').value.trim();
+  const pass  = document.getElementById('entry-pass').value;
+  const notes = document.getElementById('entry-notes').value.trim();
+
+  if (!site || !pass) { toast('Site and password are required'); return; }
+
+  if (id) {
+    const idx = VaultState.entries.findIndex(e => e.id === id);
+    if (idx !== -1) {
+      VaultState.entries[idx] = { ...VaultState.entries[idx], site, username: user, password: pass, notes };
+    }
+  } else {
+    VaultState.entries.push({
+      id: crypto.randomUUID(),
+      site, username: user, password: pass, notes,
+      created: new Date().toISOString()
+    });
+  }
+
+  closeModal();
+  renderVault();
+  toast('Entry saved — remember to export your vault!');
+}
+
+function deleteEntry(id) {
+  if (!confirm('Delete this entry?')) return;
+  VaultState.entries = VaultState.entries.filter(e => e.id !== id);
+  renderVault();
+  toast('Entry deleted');
+}
+
+function copyPass(id) {
+  const entry = VaultState.entries.find(e => e.id === id);
+  if (!entry) return;
+  navigator.clipboard.writeText(entry.password)
+    .then(() => toast('Password copied!'))
+    .catch(() => toast('Could not copy'));
+}
+
+function genAndFill() {
+  const p = window.generateSecurePassword(24, true);
+  document.getElementById('entry-pass').value = p;
+  document.getElementById('entry-pass').type  = 'text';
+}
+
+// ── Toast ──
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── PWA: Register Service Worker ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(e => {
+    console.warn('[SW] Registration failed:', e);
+  });
+}
+
+// ── Wait for WASM ready ──
+document.addEventListener('vaultReady', () => {
+  showScreen('lock');
+});
+
+document.addEventListener('vaultWasmError', e => {
+  document.getElementById('loading-text').textContent =
+    'WASM LOAD FAILED — run via HTTP server (see build guide)';
+});
+</script>
+
+<!-- Load WASM runtime shim + our bridge -->
+<!-- wasm_exec.js must be copied from your Go installation (see build guide) -->
+<script src="wasm_exec.js"></script>
+<script src="vault-bridge.js"></script>
+
+</body>
+</html>
